@@ -416,24 +416,6 @@ class NativePackageOBSBuild(OBSBuild):
 ########################################################################
 # xenomai package
 ########################################################################
-# class xXenomaiOBSBuild(OBSBuild):
-#     upstream_version = '2.6.3'
-#     compression_ext = 'bz2'
-#     source_tarball_url_format = \
-#         "http://download.gna.org/xenomai/stable/xenomai-%(rev)s.tar.%(comp)s"
-#     name = 'xxenomai'
-#     dpkg_source_args = ['--format=3.0 (quilt)']
-
-#     @property
-#     def changelog_path(self):
-#         return "%s/source_tree/debian/%s" % (self.make_tmp_dir(),
-#                                              self.changelog_file)
-
-#     def debian_changelog_init(self):
-#         self.debian_package_source_unpack()
-#         super(XenomaiOBSBuild, self).debian_changelog_init()
-
-
 class XenomaiOBSBuild(NativePackageOBSBuild):
     upstream_version = '2.6.3'
     compression_ext = 'bz2'
