@@ -6,8 +6,6 @@ from StringIO import StringIO
 from debian.changelog import Changelog, Version
 import deb822
 
-#m = re.match(r"(?P<first_name>\w+) (?P<last_name>\w+)", "Malcolm Reynolds")
-
 
 ########################################################################
 # Abstract class
