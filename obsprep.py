@@ -463,13 +463,13 @@ class LinuxToolsOBSBuild(OBSBuild):
     def debian_package_source_configure(self):
         # Configure source package
         config_cmd = ('debian/rules', 'debian/control')
-        config_p = subprocess.Popen(config_cmd, cwd = self.tmp_dir)
-        if config_p.wait():
-            raise OBSBuildRuntimeError("Package configure failed")
+        tmp_dir = self.make_tmp_dir(subdir='source_tree')
+        config_p = subprocess.Popen(config_cmd, cwd=tmp_dir)
+        config_p.wait()  # Always fails
         # Remove cruft causing dpkg-source errors
         #     error: detected 4 unwanted binary files
         for path in self.configure_cruft:
-            os.remove(os.path.join(self.tmp_dir, path))
+            os.remove(os.path.join(tmp_dir, path))
         print "Configured source package"
 
 ########################################################################
@@ -572,6 +572,10 @@ class LinuxOBSBuild(OBSBuild):
 class LinuxLatestOBSBuild(OBSBuild):
     name = 'linux-latest'
     linux_subver_re = re.compile(r'^([0-9.]+)\.([0-9]+)$')
+
+    def debian_package_source_fetch(self):
+        # All sources in this directory
+        pass
 
     def debian_package_source_unpack(self):
         # All sources in this directory
