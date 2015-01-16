@@ -17,6 +17,7 @@ class OBSBuild(object):
 
     source_tarball_url_format = None
     compression_ext = 'gz'
+    debian_compression_ext = None
     tarball_strip_components = 1
     changelog_file = 'changelog'
     name = None
@@ -334,6 +335,7 @@ class PackageRebuildOBSBuild(OBSBuild):
                 name = self.name,
                 rev = self.upstream_version,
                 comp = self.compression_ext,
+                deb_comp = self.debian_compression_ext or self.compression_ext,
                 deb_rel = self.debian_package_release,
                 ))
         return kwargs
@@ -356,7 +358,7 @@ class PackageRebuildOBSBuild(OBSBuild):
 
     @property
     def debian_package_debianization_tarball_name(self):
-        return "%(name)s_%(rev)s-%(deb_rel)s.debian.tar.%(comp)s" % \
+        return "%(name)s_%(rev)s-%(deb_rel)s.debian.tar.%(deb_comp)s" % \
             self.format_vars()
 
     @property
@@ -409,6 +411,25 @@ class NativePackageOBSBuild(OBSBuild):
 
     def debian_package_source_debianize(self):
         print "Debianizing source tree:  not needed for native package"
+
+
+class NoSourcePackageOBSBuild(OBSBuild):
+    def debian_package_source_fetch(self):
+        # All sources in this directory
+        pass
+
+    def debian_package_source_unpack(self):
+        # All sources in this directory
+        pass
+
+    def debian_package_dpkg_source(self):
+        # All sources in this directory, so remove all tarballs
+        files = glob.glob("%s_*.tar.%s" % (self.name, self.compression_ext))
+        for f in files:
+            print "    Removing existing file '%s'" % f
+            os.unlink(f)
+
+        super(NoSourcePackageOBSBuild, self).debian_package_dpkg_source()
 
 
 ########################################################################
@@ -569,26 +590,9 @@ class LinuxOBSBuild(OBSBuild):
 ########################################################################
 # linux-latest package
 ########################################################################
-class LinuxLatestOBSBuild(OBSBuild):
+class LinuxLatestOBSBuild(NoSourcePackageOBSBuild):
     name = 'linux-latest'
     linux_subver_re = re.compile(r'^([0-9.]+)\.([0-9]+)$')
-
-    def debian_package_source_fetch(self):
-        # All sources in this directory
-        pass
-
-    def debian_package_source_unpack(self):
-        # All sources in this directory
-        pass
-
-    def debian_package_dpkg_source(self):
-        # All sources in this directory, so remove all tarballs
-        files = glob.glob("%s_*.tar.%s" % (self.name, self.compression_ext))
-        for f in files:
-            print "    Removing existing file '%s'" % f
-            os.unlink(f)
-
-        super(LinuxLatestOBSBuild, self).debian_package_dpkg_source()
 
     def debian_package_source_configure(self):
         print "Configuring Debian source package"
@@ -670,6 +674,22 @@ class CythonOBSBuild(PackageRebuildOBSBuild):
 
         
 ########################################################################
+# dh-python package
+########################################################################
+class DHPythonOBSBuild(PackageRebuildOBSBuild):
+    upstream_version = '1.20140511'
+    debian_package_release = '1~bpo70+1'
+    base_url = 'http://ftp.de.debian.org/debian/pool/main/d/dh-python'
+    compression_ext = 'xz'
+    debian_compression_ext = 'gz'
+    source_tarball_url_format = \
+        '%s/dh-python_%%(rev)s.orig.tar.%%(comp)s' % base_url
+    debianization_tarball_url_format = '%s/%%(debzn_tb)s' % base_url
+    debian_dsc_url_format = '%s/%%(dsc)s' % base_url
+    name = 'dh-python'
+
+        
+########################################################################
 # pyzmq package
 ########################################################################
 class PyZMQOBSBuild(OBSBuild):
@@ -708,6 +728,40 @@ class JanssonOBSBuild(OBSBuild):
     name = 'jansson'
 
 
+########################################################################
+# python-pyftpdlib package
+########################################################################
+class PythonPyFTPDLibOBSBuild(OBSBuild):
+    source_tarball_url_format = \
+        ("https://github.com/giampaolo/pyftpdlib/archive/" \
+             "release-%(rev)s.tar.%(comp)s")
+    name = 'python-pyftpdlib'
+
+
+########################################################################
+# dovetail-automata-keyring package
+########################################################################
+class DovetailAutomataKeyringOBSBuild(NoSourcePackageOBSBuild):
+    name = 'dovetail-automata-keyring'
+
+
+########################################################################
+# ghdl package
+########################################################################
+class GHDLOBSBuild(PackageRebuildOBSBuild):
+    upstream_version = '0.31'
+    debian_package_release = '2wheezy1'
+    base_url = ('http://downloads.sourceforge.net/ghdl-updates/Builds/' \
+                    'ghdl-%(rev)s/Debian')
+    source_tarball_url_format = \
+        '%s/ghdl_%%(rev)s.orig.tar.%%(comp)s' % base_url
+    debianization_tarball_url_format = '%s/%%(debzn_tb)s' % base_url
+    debian_dsc_url_format = '%s/%%(dsc)s' % base_url
+    name = 'ghdl'
+    gcc48_url = \
+    'http://mirrors-usa.go-parts.com/gcc/releases/gcc-4.8.4/gcc-4.8.4.tar.bz2'
+
+        
 ########################################################################
 # main()
 ########################################################################
