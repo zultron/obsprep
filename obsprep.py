@@ -23,6 +23,7 @@ class OBSBuild(object):
     name = None
     registry = []
     dpkg_source_args = []
+    git_rev = ''
     # Hardcoded in osc.commandline.Osc.do_repourls()
     url_tmpl = 'http://download.opensuse.org/repositories/%s'
 
@@ -44,9 +45,6 @@ class OBSBuild(object):
         # Set up osc object and configuration
         osc.conf.get_config()
         self.osc = osc.core.Package(pac_dir)
-
-        # Set up initial changelog entry
-        self.debian_changelog_init()
 
 
     ########################################################################
@@ -97,6 +95,7 @@ class OBSBuild(object):
         return self.source_tarball_url_format % \
             dict(
             rev = self.upstream_version,
+            git = self.git_rev,
             comp = self.compression_ext,
             )
 
@@ -183,7 +182,7 @@ class OBSBuild(object):
             (self.debian_tarball_md5sum,
              self.debian_tarball_size,
              self.debian_tarball_filename)
-        
+
     @property
     def debian_version_next(self):
         return Version('%s~%d' % (self.changelog_last.version,
@@ -275,9 +274,9 @@ class OBSBuild(object):
         print "Building Debian source package"
 
         # Remove existing debianization and .dsc files
-        files = glob.glob("%s_*.debian.tar.%s" %
-                          (self.name, self.compression_ext)) + \
-                          glob.glob("%s_*.dsc" % self.name)
+        files = (glob.glob("%s_*.debian.tar.%s" %
+                           (self.name, self.compression_ext)) +
+                 glob.glob("%s_*.dsc" % self.name))
         for f in files:
             print "    Removing existing file '%s'" % f
             os.unlink(f)
@@ -301,6 +300,8 @@ class OBSBuild(object):
 
         self.debian_package_source_fetch()
         self.debian_package_source_unpack()
+        self.debian_changelog_init()
+        self.debian_changelog_new(('  * Rebuild in OBS',))
         self.debian_package_source_debianize()
         self.debian_package_source_configure()
         self.debian_package_dpkg_source()
@@ -395,14 +396,7 @@ class PackageRebuildOBSBuild(OBSBuild):
 
         
 class NativePackageOBSBuild(OBSBuild):
-
-    def parse_changelog(self):
-        # HACK FIXME  Need proper subclass structure
-        # This overrides a method used in __init__()
-        return (0,)
-
-    def debian_changelog_new(self, changes):
-        print "Not generating new changelog entry for native package"
+    changelog_file = 'debian/changelog'
 
     @property
     def debian_tarball_filename(self):
@@ -449,15 +443,9 @@ class XenomaiOBSBuild(NativePackageOBSBuild):
 ########################################################################
 class RTAIOBSBuild(OBSBuild):
     source_tarball_url_format = \
-        "https://github.com/shabbyx/rtai/archive/%(rev)s.tar.%(comp)s"
+        "https://github.com/shabbyx/rtai/archive/%(git)s.tar.%(comp)s"
     upstream_version_re = re.compile(r'(?P<rel>.*)\.(?P<gitrev>[^.]*)')
     name = 'rtai'
-
-    @property
-    def debian_tarball_url(self):
-        '''RTAI tarball comes from github, so git_rev replaces version'''
-        return self.source_tarball_url_format % \
-            dict(rev = self.git_rev)
 
     @property
     def git_rev(self):
@@ -763,14 +751,58 @@ class GHDLOBSBuild(PackageRebuildOBSBuild):
 
         
 ########################################################################
+# machinekit package
+########################################################################
+class MachinekitOBSBuild(NativePackageOBSBuild):
+    # source_tarball_url_format = \
+    #     "https://github.com/machinekit/machinekit/archive/%(git)s.tar.%(comp)s"
+    source_tarball_url_format = \
+        "https://github.com/zultron/machinekit/archive/%(git)s.tar.%(comp)s"
+    git_rev = 'da4e7c28'  # FIXME this should come from github
+    update_num = 1  # Bump this when git_rev changes for upstream update
+    upstream_version = '0.2.%d.%s' % (update_num, git_rev)
+    upstream_version_re = re.compile(r'(?P<rel>.*)\.(?P<gitrev>[^.]*)')
+    name = 'machinekit'
+    dpkg_source_args = ['--format=3.0 (native)']
+    linux_package_abiver = '3.8-1'
+
+    @property
+    def changelog_path(self):
+        tmp_dir = self.make_tmp_dir(subdir='source_tree')
+        return os.path.join(tmp_dir, self.changelog_file)
+
+    @property
+    def debian_version_next(self):
+        return self.upstream_version
+
+    def debian_package_source_configure(self):
+        # Configure source package
+        config_cmd = (
+            'debian/configure', '-prxD',
+            '-X', self.linux_package_abiver,
+            '-R', self.linux_package_abiver,
+            )
+        tmp_dir = self.make_tmp_dir(subdir='source_tree')
+        print "    Running command:  %s" % ' '.join(config_cmd)
+        config_p = subprocess.Popen(config_cmd, cwd=tmp_dir)
+        if config_p.wait() != 0:
+            raise OBSBuildRuntimeError(
+                "Unable to configure machinekit package")
+            
+        # Copy temp changelog into tmpdir
+        changelog_file = os.path.join(tmp_dir, 'debian/changelog')
+        print "    Writing debian changelog to %s" % changelog_file
+        self.debian_changelog_write(changelog_file)
+
+
+        print "Configured source package"
+
+
+########################################################################
 # main()
 ########################################################################
 if __name__ == '__main__':
-    ob_cls = OBSBuild.package_class()
-    ob = ob_cls()
-
-    # Set up new changelog entry
-    ob.debian_changelog_new(('  * Rebuild in OBS',))
+    ob = OBSBuild.package_inst()
 
     # Build source package
     ob.debian_package_source_build()
