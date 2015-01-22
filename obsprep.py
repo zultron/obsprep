@@ -758,8 +758,8 @@ class MachinekitOBSBuild(NativePackageOBSBuild):
     #     "https://github.com/machinekit/machinekit/archive/%(git)s.tar.%(comp)s"
     source_tarball_url_format = \
         "https://github.com/zultron/machinekit/archive/%(git)s.tar.%(comp)s"
-    git_rev = 'da4e7c28'  # FIXME this should come from github
-    update_num = 1  # Bump this when git_rev changes for upstream update
+    git_rev = '7468d44d'  # FIXME this should come from github
+    update_num = 10  # Bump this when git_rev changes for upstream update
     upstream_version = '0.2.%d.%s' % (update_num, git_rev)
     upstream_version_re = re.compile(r'(?P<rel>.*)\.(?P<gitrev>[^.]*)')
     name = 'machinekit'
