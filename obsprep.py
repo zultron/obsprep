@@ -196,8 +196,13 @@ class OBSBuild(object):
         user = osc.core.get_user_data(apiurl, userid, 'realname', 'email')
         return '"%s" <%s>' % tuple(user)
 
+    @property
+    def changelog(self):
+        if not hasattr(self, '_changelog'):
+            self._changelog = self.parse_changelog()
+        return self._changelog
+
     def debian_changelog_init(self):
-        self.changelog = self.parse_changelog()
         self.changelog_last = list(self.changelog)[0]
 
     def debian_changelog_new(self, changes):
