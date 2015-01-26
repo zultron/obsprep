@@ -1,10 +1,12 @@
 #!/usr/bin/python
 
-import re, os, shutil, urllib, subprocess, glob
+import argparse
+import re, os, sys, shutil, urllib, subprocess, glob
 import osc.conf, osc.core, yaml, md5, pycurl
 from StringIO import StringIO
 from debian.changelog import Changelog, Version
 import deb822
+from pprint import pprint
 
 
 ########################################################################
@@ -37,10 +39,11 @@ class OBSBuild(object):
             type.__init__(cls, name, bases, clsdict)
             cls.registry.append(cls)
 
-    def __init__(self, pac_dir = os.getcwd()):
+    def __init__(self, pac_dir = os.getcwd(), args = None):
         self.package_dir = os.path.abspath(pac_dir)
         self.tmp_dir = os.path.normpath("%s/../tmp/%s" % (self.package_dir,
                                                           self.name))
+        self.args = args
 
         # Set up osc object and configuration
         osc.conf.get_config()
@@ -62,8 +65,8 @@ class OBSBuild(object):
         return None
 
     @classmethod
-    def package_inst(cls, pac_dir = os.getcwd()):
-        return cls.package_class(pac_dir)(pac_dir)
+    def package_inst(cls, pac_dir = os.getcwd(), args=None):
+        return cls.package_class(pac_dir)(pac_dir, args=args)
 
     def make_tmp_dir(self, subdir=None, clean=False, create=True):
         # If subdir specified, append to tmp_dir
@@ -299,7 +302,7 @@ class OBSBuild(object):
         if dpkg_p.wait():
             raise OBSBuildRuntimeError("`dpkg-source` failed")
 
-    def debian_package_source_build(self):
+    def debian_package_source_tree(self):
         # Init tmp dir
         self.make_tmp_dir(clean=True)
 
@@ -309,6 +312,10 @@ class OBSBuild(object):
         self.debian_changelog_new(('  * Rebuild in OBS',))
         self.debian_package_source_debianize()
         self.debian_package_source_configure()
+
+    def debian_package_source_build(self):
+        self.debian_package_source_tree()
+
         self.debian_package_dpkg_source()
 
         # Clean up
@@ -441,6 +448,11 @@ class XenomaiOBSBuild(NativePackageOBSBuild):
         "http://download.gna.org/xenomai/stable/xenomai-%(rev)s.tar.%(comp)s"
     name = 'xenomai'
     dpkg_source_args = ['--format=3.0 (native)']
+
+    @property
+    def changelog_path(self):
+        tmp_dir = self.make_tmp_dir(subdir='source_tree')
+        return os.path.join(tmp_dir, self.changelog_file)
 
 
 ########################################################################
@@ -772,11 +784,6 @@ class MachinekitOBSBuild(NativePackageOBSBuild):
     linux_package_abiver = '3.8-1'
 
     @property
-    def changelog_path(self):
-        tmp_dir = self.make_tmp_dir(subdir='source_tree')
-        return os.path.join(tmp_dir, self.changelog_file)
-
-    @property
     def debian_version_next(self):
         return self.upstream_version
 
@@ -807,7 +814,24 @@ class MachinekitOBSBuild(NativePackageOBSBuild):
 # main()
 ########################################################################
 if __name__ == '__main__':
-    ob = OBSBuild.package_inst()
+    parser = argparse.ArgumentParser(
+        description='Prepare Debian packages for OBS build')
+    parser.add_argument('--unpack', '-u', action='store_true',
+                        help='Unpack Debianized source tree')
+    parser.add_argument('--build', '-b', action='store_true',
+                        help='Build Debian package from source tree')
 
-    # Build source package
-    ob.debian_package_source_build()
+    args = parser.parse_args()
+
+    ob = OBSBuild.package_inst(args=args)
+
+    if ob.args.unpack:
+        print "Unpacking Debianized source tree"
+        ob.debian_package_source_tree()
+    elif ob.args.build:
+        print "Building package from Debianized source tree"
+        ob.debian_package_dpkg_source()
+        ob.remove_tmp_dir()
+    else:
+        print "Building source package"
+        ob.debian_package_source_build()
