@@ -319,7 +319,8 @@ class OBSBuild(object):
         self.debian_package_dpkg_source()
 
         # Clean up
-        self.remove_tmp_dir()
+        if not self.args.nocleanup:
+            self.remove_tmp_dir()
 
 
 class PackageRebuildOBSBuild(OBSBuild):
@@ -446,13 +447,12 @@ class NoSourcePackageOBSBuild(OBSBuild):
 ########################################################################
 # xenomai package
 ########################################################################
-class XenomaiOBSBuild(NativePackageOBSBuild):
+class XenomaiOBSBuild(OBSBuild):
     upstream_version = '2.6.3'
     compression_ext = 'bz2'
     source_tarball_url_format = \
         "http://download.gna.org/xenomai/stable/xenomai-%(rev)s.tar.%(comp)s"
     name = 'xenomai'
-    dpkg_source_args = ['--format=3.0 (native)']
 
 
 ########################################################################
@@ -820,6 +820,8 @@ if __name__ == '__main__':
                         help='Unpack Debianized source tree')
     parser.add_argument('--build', '-b', action='store_true',
                         help='Build Debian package from source tree')
+    parser.add_argument('--nocleanup', '-n', action='store_true',
+                        help='Do not clean source tree after build')
 
     args = parser.parse_args()
 
@@ -831,7 +833,8 @@ if __name__ == '__main__':
     elif ob.args.build:
         print "Building package from Debianized source tree"
         ob.debian_package_dpkg_source()
-        ob.remove_tmp_dir()
+        if not ob.args.nocleanup:
+            ob.remove_tmp_dir()
     else:
         print "Building source package"
         ob.debian_package_source_build()
