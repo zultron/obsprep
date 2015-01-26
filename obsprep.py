@@ -418,6 +418,11 @@ class NativePackageOBSBuild(OBSBuild):
     def debian_package_source_debianize(self):
         print "Debianizing source tree:  not needed for native package"
 
+    @property
+    def changelog_path(self):
+        tmp_dir = self.make_tmp_dir(subdir='source_tree')
+        return os.path.join(tmp_dir, self.changelog_file)
+
 
 class NoSourcePackageOBSBuild(OBSBuild):
     def debian_package_source_fetch(self):
@@ -448,11 +453,6 @@ class XenomaiOBSBuild(NativePackageOBSBuild):
         "http://download.gna.org/xenomai/stable/xenomai-%(rev)s.tar.%(comp)s"
     name = 'xenomai'
     dpkg_source_args = ['--format=3.0 (native)']
-
-    @property
-    def changelog_path(self):
-        tmp_dir = self.make_tmp_dir(subdir='source_tree')
-        return os.path.join(tmp_dir, self.changelog_file)
 
 
 ########################################################################
