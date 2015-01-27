@@ -273,6 +273,14 @@ class OBSBuild(object):
         print "    Writing debian changelog to %s" % changelog_file
         self.debian_changelog_write(changelog_file)
 
+        # Symlink Debian orig tarball for local builds
+        tarball_link = os.path.join(
+            self.make_tmp_dir(), self.debian_tarball_filename)
+        print "    Symlinking original tarball to %s" % tarball_link
+        if os.path.lexists(tarball_link):
+            os.unlink(tarball_link)
+        os.symlink(self.debian_tarball_path, tarball_link)
+
     def debian_package_source_configure(self):
         # Override in subclasses that have an extra source package
         # configuration step
